@@ -14,4 +14,12 @@ export { QuestionError, makeQuestion } from './question.js';
 export { createRegistry } from './registry.js';
 export { createRenderer } from './render.js';
 export { Fraction } from './fraction.js';
+export {
+  binaryLongDivision,
+  countDigitInTable,
+  countOnesInDivision,
+  remainderRow,
+  successiveDivisions,
+  tableTexts,
+} from './division.js';
 export { bitLength, fromBase, fromBinary, popcount, toBase, toBinary } from './radix.js';
