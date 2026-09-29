@@ -1,0 +1,15 @@
+# Moodle question banks must never be published: not in the repository,
+# not in releases. Keep any local reference material under local/.
+*.xml
+*moodle*
+/local/
+
+# Tooling
+node_modules/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
