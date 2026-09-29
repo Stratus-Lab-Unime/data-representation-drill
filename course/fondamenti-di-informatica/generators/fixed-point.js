@@ -5,7 +5,7 @@
 // other half a two-digit decimal fraction that never is (such as .67), so the
 // truncation matters.
 
-import { toFixedPoint } from '../../../engine/index.js';
+import { fixedPointWorking, toFixedPoint } from '../../../engine/index.js';
 
 export const fixedPoint = {
   id: 'fixed-point',
@@ -37,6 +37,7 @@ export const fixedPoint = {
         id: 'fixed-point.answer',
         values: { bits, sign, integer: integerBits, fraction: fractionBits },
       },
+      steps: [{ kind: 'fraction-table', ...fixedPointWorking(value, intBits, fracBits) }],
     };
   },
 };

@@ -114,3 +114,35 @@ test('random fractions satisfy the field identities', () => {
     assert.ok(F(fl).compare(a) <= 0 && a.compare(F(fl + 1n)) < 0);
   }
 });
+
+test('toDecimal gives the exact decimal text with the fewest digits', () => {
+  assert.equal(Fraction.parse('-13.625').toDecimal(), '-13.625');
+  assert.equal(Fraction.parse('0.90625').toDecimal(), '0.90625');
+  assert.equal(Fraction.parse('1.50').toDecimal(), '1.5'); // no trailing zero
+  assert.equal(Fraction.parse('007.0').toDecimal(), '7');
+  assert.equal(F(3, 8).toDecimal(), '0.375');
+  assert.equal(F(1).toDecimal(), '1');
+  assert.equal(F(0).toDecimal(), '0');
+  assert.equal(F(-1, 4).toDecimal(), '-0.25');
+  assert.equal(F(1, 1024).toDecimal(), '0.0009765625');
+  assert.equal(F(7, 5).toDecimal(), '1.4');
+});
+
+test('toDecimal refuses fractions with no finite decimal expansion', () => {
+  assert.throws(() => F(1, 3).toDecimal(), RangeError);
+  assert.throws(() => F(2, 7).toDecimal(), RangeError);
+  assert.throws(() => F(1, 6).toDecimal(), RangeError);
+});
+
+test('parse and toDecimal are inverse for random decimals', () => {
+  const rng = createRng(505);
+  for (let i = 0; i < 500; i++) {
+    const decimals = rng.int(0, 7);
+    const whole = rng.int(0, 99999);
+    const fraction = decimals ? String(rng.int(0, 10 ** decimals - 1)).padStart(decimals, '0') : '';
+    const text = `${rng.chance() ? '-' : ''}${whole}${fraction ? `.${fraction}` : ''}`;
+    const canonical = text.includes('.') ? text.replace(/0+$/, '').replace(/\.$/, '') : text;
+    const expected = canonical === '-0' ? '0' : canonical;
+    assert.equal(Fraction.parse(text).toDecimal(), expected, text);
+  }
+});

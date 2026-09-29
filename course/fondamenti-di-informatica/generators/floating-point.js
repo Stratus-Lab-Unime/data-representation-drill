@@ -2,7 +2,7 @@
 // are below 400 in absolute value. Cases where the course's rounding rule (round
 // up when the next bit is 1) and the standard's (ties to even) differ are skipped.
 
-import { drawUntil, toIeee754Single } from '../../../engine/index.js';
+import { drawUntil, ieee754Working, toIeee754Single } from '../../../engine/index.js';
 
 function randomDecimal(rng) {
   const decimals = rng.int(1, 3);
@@ -22,6 +22,7 @@ export const floatingPoint = {
     return {
       prompt: { id: 'floating-point.prompt', values: { value } },
       answer: { id: 'floating-point.answer', values: { bits, sign, exponent, mantissa } },
+      steps: [{ kind: 'ieee-steps', ...ieee754Working(value) }],
     };
   },
 };

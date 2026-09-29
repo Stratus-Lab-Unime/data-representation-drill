@@ -45,6 +45,56 @@ export function toIeee754Single(value) {
   return { sign, exponent, mantissa: mantissaBits, bits: sign + exponent + mantissaBits, tie, power };
 }
 
+/**
+ * The working of a conversion, as the slides show it, for numbers from 1 up to
+ * 2^24: integer part in binary, fractional part on as many bits as fit in the
+ * mantissa, normalisation, exponent, and the rounding or padding of the mantissa.
+ *
+ * `rounding` is 'exact' (the fraction ended within the available bits, so the
+ * mantissa is completed with zeros), 'truncated' (the first bit left out is 0) or
+ * 'rounded-up' (it is 1). `carry` is true when rounding up turned 1.11...1 into
+ * 10.0 and raised the exponent. The final fields agree with toIeee754Single.
+ */
+export function ieee754Working(value) {
+  const result = toIeee754Single(value);
+  const x = Fraction.of(value).abs();
+  if (x.compare(1) < 0 || x.compare(1 << 24) >= 0) throw new RangeError('the working is shown for numbers from 1 to 2^24');
+
+  const whole = x.trunc();
+  const integerBits = toBinary(whole);
+  const power = integerBits.length - 1;
+  const available = MANTISSA_BITS - power; // fractional bits that fit after the integer bits
+  let rest = x.sub(new Fraction(whole));
+  const fractionDecimal = rest.toDecimal();
+  let fractionBits = '';
+  while (fractionBits.length < available && rest.sign() !== 0) {
+    const doubled = rest.mul(2);
+    const bit = doubled.floor();
+    fractionBits += String(bit);
+    rest = doubled.sub(new Fraction(bit));
+  }
+  const next = rest.sign() !== 0 ? String(rest.mul(2).floor()) : null;
+  const kept = integerBits.slice(1) + fractionBits; // mantissa bits before rounding or padding
+  return {
+    sign: result.sign,
+    value: Fraction.of(value).toDecimal(),
+    integerDecimal: String(whole),
+    integerBits,
+    fractionDecimal,
+    fractionBits,
+    next,
+    rounding: next === null ? 'exact' : next === '1' ? 'rounded-up' : 'truncated',
+    power,
+    kept,
+    padding: MANTISSA_BITS - kept.length,
+    exponentValue: result.power + BIAS,
+    exponent: result.exponent,
+    mantissa: result.mantissa,
+    carry: result.power !== power,
+    bits: result.bits,
+  };
+}
+
 /** The exact value of a 32-bit normal number, as a Fraction. */
 export function fromIeee754Single(bits) {
   if (!/^[01]{32}$/.test(bits)) throw new SyntaxError('expected 32 bits');

@@ -4,26 +4,7 @@ import { binaryLongDivision, remainderRow, successiveDivisions } from '../engine
 import { drawDivisionTable } from '../app/graphics/division-table.js';
 import { drawLongDivision } from '../app/graphics/long-division.js';
 import { escapeXml, text } from '../app/graphics/svg.js';
-
-const count = (markup, pattern) => (markup.match(pattern) ?? []).length;
-const texts = (markup) => [...markup.matchAll(/<text\b[^>]*>(.*?)<\/text>/g)].map((m) => m[1]);
-
-function assertWellFormed(markup) {
-  assert.match(markup, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" class="fid-svg"/);
-  assert.ok(markup.endsWith('</svg>'));
-  assert.doesNotMatch(markup, /NaN|undefined|Infinity|null/);
-  // content security policies and theming: no inline styles, scripts or links
-  assert.doesNotMatch(markup, /\sstyle=|<style|<script|href=|on[a-z]+=/i);
-  const [, w, h] = /viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(markup).map(Number);
-  assert.ok(w > 0 && h > 0);
-  assert.match(markup, new RegExp(`width="${w}" height="${h}"`));
-  for (const m of markup.matchAll(/\b(x|x1|x2|cx)="(-?[\d.]+)"/g)) {
-    assert.ok(Number(m[2]) >= 0 && Number(m[2]) <= w, `${m[1]}=${m[2]} outside width ${w}`);
-  }
-  for (const m of markup.matchAll(/\b(y|y1|y2|cy)="(-?[\d.]+)"/g)) {
-    assert.ok(Number(m[2]) >= 0 && Number(m[2]) <= h, `${m[1]}=${m[2]} outside height ${h}`);
-  }
-}
+import { assertWellFormed, count, texts } from './svg-helpers.mjs';
 
 test('helpers escape text', () => {
   assert.equal(escapeXml(`<a href="x">&`), '&lt;a href=&quot;x&quot;&gt;&amp;');

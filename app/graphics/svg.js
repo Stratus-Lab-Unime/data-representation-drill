@@ -15,6 +15,31 @@ export function text(x, y, content, { cls = '', anchor = 'start' } = {}) {
   return `<text class="fid-text ${cls}" x="${f(x)}" y="${f(y)}" text-anchor="${anchor}">${escapeXml(content)}</text>`;
 }
 
+const SHIFTS = { normal: 0, sub: 6, sup: -9 };
+
+/**
+ * One line of text made of parts: a string is plain (monospace) text, {sub} a
+ * subscript, {sup} a superscript and {label} words in the sans-serif label font.
+ */
+export function mathText(x, y, parts, { cls = '' } = {}) {
+  let shift = 0;
+  const spans = parts.map((part) => {
+    const kind = typeof part === 'string' ? 'normal' : Object.keys(part)[0];
+    const content = typeof part === 'string' ? part : part[kind];
+    const target = SHIFTS[kind] ?? 0;
+    const dy = target - shift;
+    shift = target;
+    const spanClass = kind === 'sub' || kind === 'sup' ? ' class="fid-sub"' : kind === 'label' ? ' class="fid-label"' : '';
+    return `<tspan${spanClass}${dy ? ` dy="${dy}"` : ''}>${escapeXml(content)}</tspan>`;
+  });
+  if (shift !== 0) spans.push(`<tspan dy="${-shift}"></tspan>`);
+  return `<text class="fid-text ${cls}" x="${f(x)}" y="${f(y)}">${spans.join('')}</text>`;
+}
+
+export function rect(x, y, width, height, cls = 'fid-box') {
+  return `<rect class="${cls}" x="${f(x)}" y="${f(y)}" width="${f(width)}" height="${f(height)}"/>`;
+}
+
 export function line(x1, y1, x2, y2, cls = 'fid-ln') {
   return `<line class="${cls}" x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}"/>`;
 }

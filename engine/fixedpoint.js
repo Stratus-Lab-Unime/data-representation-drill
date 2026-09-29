@@ -30,6 +30,43 @@ export function toFixedPoint(value, intBits, fracBits) {
   };
 }
 
+/**
+ * The working of a conversion, as the slides show it: the fractional part is
+ * doubled again and again and the integer part of each product is the next bit.
+ * It stops when the fraction becomes 0 or when the D bits are used up.
+ *
+ * `rows` holds, for each doubling, the fraction being doubled, the product and the
+ * bit. `next` is the bit that would come after the last one when the D bits ran
+ * out before the fraction did (null when nothing was lost). Values must have a
+ * finite decimal expansion, as decimal input always does.
+ */
+export function fixedPointWorking(value, intBits, fracBits) {
+  const result = toFixedPoint(value, intBits, fracBits); // validates the input
+  const x = Fraction.of(value);
+  const magnitude = x.abs();
+  const integer = magnitude.trunc();
+  let fraction = magnitude.sub(new Fraction(integer));
+  const rows = [];
+  while (rows.length < fracBits && fraction.sign() !== 0) {
+    const product = fraction.mul(2);
+    const bit = product.floor();
+    rows.push({ factor: fraction.toDecimal(), product: product.toDecimal(), bit: String(bit) });
+    fraction = product.sub(new Fraction(bit));
+  }
+  const next = fraction.sign() !== 0 ? String(fraction.mul(2).floor()) : null;
+  return {
+    value: x.toDecimal(),
+    sign: result.sign,
+    integerDecimal: String(integer),
+    integerBits: result.integer,
+    rows,
+    next,
+    exact: result.exact,
+    fraction: result.fraction,
+    bits: result.bits,
+  };
+}
+
 /** The exact value of a fixed-point bit string, as a Fraction. */
 export function fromFixedPoint(bits, intBits, fracBits) {
   if (bits.length !== 1 + intBits + fracBits) throw new RangeError('bit string does not match the format');

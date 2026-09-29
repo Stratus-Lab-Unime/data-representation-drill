@@ -110,3 +110,9 @@
   stroke: var(--fid-red);
   stroke-width: 1.5;
 }
+
+.fid-app .fid-box {
+  fill: none;
+  stroke: var(--fid-blue);
+  stroke-width: 1.5;
+}

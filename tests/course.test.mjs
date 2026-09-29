@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { GENERATORS, createCourse, messages } from '../course/fondamenti-di-informatica/index.js';
+import { drawDivisionTable } from '../app/graphics/division-table.js';
+import { drawFractionTable } from '../app/graphics/fraction-table.js';
+import { drawIeeeSteps } from '../app/graphics/ieee-steps.js';
+import { drawLongDivision } from '../app/graphics/long-division.js';
+import { assertWellFormed } from './svg-helpers.mjs';
 
 const { registry, renderer, categories } = createCourse();
 
@@ -333,4 +338,65 @@ test('24-bit images are called "16,7 milioni di colori"', () => {
 test('decimal numbers are written with the comma', () => {
   const text = renderer.render({ id: 'fixed-point.prompt', values: { value: '-13.625', intBits: 4, fracBits: 4 } });
   assert.match(text, /-13,625/);
+});
+
+// ---- the working shown on demand ----
+
+// Which drawing shows each kind of step.
+const DRAWERS = {
+  'division-table': drawDivisionTable,
+  'long-division': drawLongDivision,
+  'fraction-table': drawFractionTable,
+  'ieee-steps': drawIeeeSteps,
+};
+
+// The categories that show a working, and the kind of it. Signed numbers have none, on purpose.
+const WORKINGS = {
+  'dec-to-bin': 'division-table',
+  'dec-to-hex': 'division-table',
+  'fixed-point': 'fraction-table',
+  'floating-point': 'ieee-steps',
+  'binary-division': 'long-division',
+};
+
+test('the categories with a working are exactly the agreed ones', () => {
+  for (const { id } of categories) {
+    const kinds = questionsOf(id).flatMap((q) => (q.steps ?? []).map((step) => step.kind));
+    if (WORKINGS[id]) assert.deepEqual([...new Set(kinds)], [WORKINGS[id]], id);
+    else assert.deepEqual(kinds, [], id);
+  }
+});
+
+test('every working can be drawn', () => {
+  for (const id of Object.keys(WORKINGS)) {
+    for (const q of questionsOf(id).slice(0, 150)) {
+      const [{ kind, ...model }] = q.steps;
+      assertWellFormed(DRAWERS[kind](model));
+    }
+  }
+});
+
+test('the working of fixed point agrees with the question and the answer', () => {
+  for (const q of questionsOf('fixed-point')) {
+    const [{ kind, ...model }] = q.steps;
+    const { value, intBits, fracBits } = q.prompt.values;
+    assert.equal(kind, 'fraction-table');
+    assert.equal(model.value, value);
+    assert.equal(model.bits, q.answer.values.bits);
+    assert.ok(model.rows.length >= 1 && model.rows.length <= fracBits);
+    assert.equal(model.integerBits.length, intBits);
+    assert.equal(model.next === null, model.rows.length < fracBits || model.exact);
+  }
+});
+
+test('the working of floating point agrees with the question and the answer', () => {
+  for (const q of questionsOf('floating-point')) {
+    const [{ kind, ...model }] = q.steps;
+    assert.equal(kind, 'ieee-steps');
+    assert.equal(model.value, q.prompt.values.value);
+    assert.equal(model.bits, q.answer.values.bits);
+    assert.equal(model.mantissa, q.answer.values.mantissa);
+    assert.equal(model.carry, false);
+    assert.equal(model.kept.length + model.padding, 23);
+  }
 });

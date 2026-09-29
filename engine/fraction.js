@@ -109,6 +109,25 @@ export class Fraction {
     return this.n < 0n && this.n % this.d !== 0n ? q - 1n : q;
   }
 
+  /**
+   * The exact decimal text of the value ("-13.625", "0.90625", "1"), with the fewest
+   * digits possible. Only fractions whose denominator has no prime factors other than
+   * 2 and 5 have one; others throw a RangeError.
+   */
+  toDecimal() {
+    let rest = this.d;
+    let twos = 0;
+    let fives = 0;
+    while (rest % 2n === 0n) [rest, twos] = [rest / 2n, twos + 1];
+    while (rest % 5n === 0n) [rest, fives] = [rest / 5n, fives + 1];
+    if (rest !== 1n) throw new RangeError(`${this} has no finite decimal expansion`);
+    const places = Math.max(twos, fives);
+    const digits = String((this.n < 0n ? -this.n : this.n) * 10n ** BigInt(places) / this.d).padStart(places + 1, '0');
+    const whole = digits.slice(0, digits.length - places);
+    const decimals = digits.slice(digits.length - places);
+    return `${this.n < 0n ? '-' : ''}${whole}${places ? `.${decimals}` : ''}`;
+  }
+
   /** Approximate value, for display and debugging only. */
   toNumber() {
     return Number(this.n) / Number(this.d);

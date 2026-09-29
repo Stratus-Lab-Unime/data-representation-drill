@@ -101,3 +101,99 @@ test('decoding refuses malformed or non-normal input', () => {
   assert.throws(() => fromIeee754Single(`0${'0'.repeat(8)}${'0'.repeat(23)}`), RangeError); // zero: exponent 0
   assert.throws(() => fromIeee754Single(`0${'1'.repeat(8)}${'0'.repeat(23)}`), RangeError); // infinity: exponent 255
 });
+
+// ---- the working of a conversion ----
+
+import { ieee754Working } from '../engine/ieee754.js';
+
+// Independent oracle for the bits after the point: long multiplication on BigInt.
+function slowFractionBits(text, count) {
+  const [, fraction = ''] = text.replace('-', '').split('.');
+  let numerator = BigInt(fraction || '0');
+  const denominator = 10n ** BigInt(fraction.length || 1);
+  let bits = '';
+  for (let i = 0; i < count && numerator !== 0n; i++) {
+    numerator *= 2n;
+    if (numerator >= denominator) {
+      bits += '1';
+      numerator -= denominator;
+    } else {
+      bits += '0';
+    }
+  }
+  return { bits, next: numerator === 0n ? null : numerator * 2n >= denominator ? '1' : '0' };
+}
+
+test('the working of the slide for -612.1875', () => {
+  const w = ieee754Working('-612.1875');
+  assert.equal(w.sign, '1');
+  assert.equal(w.integerBits, '1001100100');
+  assert.equal(w.fractionBits, '0011');
+  assert.equal(w.power, 9);
+  assert.equal(w.kept, '0011001000011');
+  assert.equal(w.padding, 10); // "m has been completed with 10 zero bits"
+  assert.equal(w.exponentValue, 136);
+  assert.equal(w.exponent, '10001000');
+  assert.equal(w.rounding, 'exact');
+  assert.equal(w.mantissa, '00110010000110000000000');
+  assert.equal(w.bits, '1' + '10001000' + '00110010000110000000000');
+  assert.equal(w.value, '-612.1875'); // the value keeps its sign
+  assert.equal(w.fractionDecimal, '0.1875');
+});
+
+test('1574.873 is rounded up and -234987 needs no rounding at all', () => {
+  const up = ieee754Working('1574.873');
+  assert.equal(up.rounding, 'rounded-up'); // the bit after the last one stored is 1
+  assert.equal(up.next, '1');
+  assert.equal(up.kept.length, 23);
+  assert.equal(up.padding, 0);
+  assert.equal(up.exponentValue, 137);
+  // The slide says that -234987 is truncated, but it is an integer of 18 bits: it fits, and the
+  // mantissa is only completed with zeros.
+  const integer = ieee754Working('-234987');
+  assert.equal(integer.rounding, 'exact');
+  assert.equal(integer.integerBits.length, 18);
+  assert.equal(integer.padding, 6);
+  assert.equal(integer.next, null);
+});
+
+test('the working agrees with the conversion and with an independent oracle', () => {
+  const rng = createRng(93);
+  const seen = new Set();
+  for (let i = 0; i < 3000; i++) {
+    const decimals = rng.int(0, 4);
+    const whole = rng.int(1, 5000);
+    const text = decimals ? `${whole}.${String(rng.int(1, 10 ** decimals - 1)).padStart(decimals, '0')}` : String(whole);
+    const signed = rng.chance() ? `-${text}` : text;
+    const w = ieee754Working(signed);
+    const r = toIeee754Single(signed);
+    assert.equal(w.bits, r.bits, signed);
+    assert.equal(w.mantissa, r.mantissa);
+    assert.equal(w.exponent, r.exponent);
+    const available = 23 - w.power;
+    const oracle = slowFractionBits(text, available);
+    assert.equal(w.fractionBits, oracle.bits, signed);
+    assert.equal(w.next, oracle.next, signed);
+    assert.equal(w.rounding, oracle.next === null ? 'exact' : oracle.next === '1' ? 'rounded-up' : 'truncated');
+    if (w.rounding === 'exact') assert.equal(w.kept.length + w.padding, 23);
+    else assert.equal(w.kept.length, 23);
+    assert.equal(w.integerBits, whole.toString(2));
+    assert.equal(w.power, whole.toString(2).length - 1);
+    seen.add(w.rounding);
+  }
+  assert.deepEqual([...seen].sort(), ['exact', 'rounded-up', 'truncated']);
+});
+
+test('rounding up can carry into the exponent', () => {
+  const w = ieee754Working('1.999999999');
+  assert.equal(w.carry, true);
+  assert.equal(w.exponentValue, 128);
+  assert.equal(ieee754Working('1.5').carry, false);
+});
+
+test('the working is only for numbers from 1 to 2^24', () => {
+  assert.throws(() => ieee754Working('0.5'), RangeError);
+  assert.throws(() => ieee754Working('0'), RangeError);
+  assert.throws(() => ieee754Working('16777216'), RangeError);
+  assert.doesNotThrow(() => ieee754Working('16777215'));
+});
