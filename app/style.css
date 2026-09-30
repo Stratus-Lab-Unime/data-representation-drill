@@ -1,36 +1,36 @@
-/* All rules are scoped under .fid-app so the page can be dropped into another
-   site without depending on, or clashing with, its stylesheet. */
+/* Look of the STRATUS Lab site: same palette, typefaces, boxes and folding boxes,
+   copied here so the page depends on nothing from the site. Every rule is scoped
+   under .fid-app, so the page can also be dropped into another site.
+
+   Colours: shades of blue, plus the one red the site keeps for warnings, that is,
+   for the things that cost students dearly if ignored. There is no dark theme,
+   like on the site. */
 
 .fid-app {
-  --fid-bg: #ffffff;
-  --fid-fg: #1c2530;
-  --fid-muted: #5a6675;
-  --fid-accent: #1f4e8c;
-  --fid-border: #d3d9e0;
-  --fid-red: #c0392b;
-  --fid-blue: #2f6db5;
+  --fid-accent: #0277bd;
+  --fid-accent-bright: #039be5;
+  --fid-accent-soft: #e3f2fa;
+  --fid-ink: #222;
+  --fid-body: #444;
+  --fid-muted: #666; /* the site uses #888, too pale for small text on white */
+  --fid-line: #e5e5e5;
+  --fid-surface: #fafafa;
+  --fid-warn: #c62828;
+  --fid-warn-soft: #fdecea;
+  --fid-radius: 8px;
+
+  /* colours of the drawings, after the course slides */
+  --fid-blue: var(--fid-accent);
+  --fid-red: var(--fid-warn);
   --fid-green: #2e8b3d;
 
   box-sizing: border-box;
   min-height: 100vh;
   margin: 0;
-  padding: 24px 16px;
-  background: var(--fid-bg);
-  color: var(--fid-fg);
-  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  .fid-app {
-    --fid-bg: #14181d;
-    --fid-fg: #e6eaef;
-    --fid-muted: #9aa5b3;
-    --fid-accent: #7fb0ea;
-    --fid-border: #2f3742;
-    --fid-red: #ff7b6b;
-    --fid-blue: #7fb0ea;
-    --fid-green: #6fcf7f;
-  }
+  padding: 24px 16px 48px;
+  background: #fff;
+  color: var(--fid-ink);
+  font: 0.95rem/1.5 "Source Sans Pro", sans-serif;
 }
 
 .fid-app *,
@@ -39,13 +39,280 @@
   box-sizing: inherit;
 }
 
-.fid-app h1 {
-  margin: 0 0 12px;
-  font-size: 1.5rem;
-  line-height: 1.25;
+.fid-app [hidden] {
+  display: none !important;
 }
 
-/* Drawings of the division schemes (see app/graphics/). */
+.fid-app .fid-wrap {
+  max-width: 1024px;
+  margin: 0 auto;
+}
+
+/* Typography ---------------------------------------------------------------- */
+
+.fid-app h1 {
+  margin: 0 0 1rem;
+  font: italic 700 clamp(1.9rem, 6vw, 2.9rem) / 1.2 Lora, serif;
+  letter-spacing: -1px;
+  color: #000;
+}
+
+.fid-app h2 {
+  margin: 1.6rem 0 0.6rem;
+  font-size: 1.45em;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.fid-app p {
+  margin: 0 0 0.75rem;
+}
+
+.fid-app a {
+  color: var(--fid-accent);
+}
+
+.fid-app a:hover {
+  color: var(--fid-accent-bright);
+}
+
+.fid-app :focus-visible {
+  outline: 3px solid var(--fid-accent-bright);
+  outline-offset: 2px;
+}
+
+/* Like the site: small uppercase section labels */
+.fid-app h2.fid-label-title {
+  color: var(--fid-muted);
+  font-size: 0.85em;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* Like the site: justified text on wide screens, ragged on narrow ones */
+.fid-app .fid-lead {
+  -webkit-hyphens: auto;
+  hyphens: auto;
+}
+
+@media (min-width: 700px) {
+  .fid-app .fid-lead {
+    text-align: justify;
+  }
+}
+
+/* Boxes ------------------------------------------------------------------------ */
+
+.fid-app .fid-cat,
+.fid-app .fid-item {
+  border: 1px solid var(--fid-line);
+  border-left: 4px solid var(--fid-accent-bright);
+  border-radius: var(--fid-radius);
+  background: var(--fid-surface);
+  color: var(--fid-body);
+}
+
+.fid-app .fid-warning {
+  margin: 1.25rem 0;
+  padding: 0.9em 1.1em;
+  border-left: 4px solid var(--fid-warn);
+  border-radius: 0 var(--fid-radius) var(--fid-radius) 0;
+  background: var(--fid-warn-soft);
+  color: var(--fid-ink);
+}
+
+.fid-app .fid-warning h2 {
+  margin: 0 0 0.4rem;
+  color: var(--fid-warn);
+  font-size: 1.05em;
+}
+
+.fid-app .fid-warning ul {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+.fid-app .fid-warning li {
+  margin-bottom: 0.4rem;
+}
+
+.fid-app .fid-warning li:last-child {
+  margin-bottom: 0;
+}
+
+/* The categories: whole boxes are links and lift on hover, like the course cards */
+.fid-app .fid-cats {
+  display: grid;
+  gap: 1.1em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+}
+
+.fid-app .fid-cat {
+  display: block;
+  padding: 1.1em 1.3em;
+  color: var(--fid-ink);
+  font-weight: 700;
+  text-decoration: none;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.fid-app .fid-cat:hover {
+  color: var(--fid-ink);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
+}
+
+/* A question ---------------------------------------------------------------------- */
+
+.fid-app .fid-nav {
+  margin: 0 0 1rem;
+}
+
+.fid-app .fid-prompt {
+  margin: 0 0 1rem;
+  font-size: 1.2em;
+  line-height: 1.5;
+}
+
+.fid-app .fid-actions {
+  margin: 1rem 0;
+}
+
+/* Folding boxes: the title is always there, the content opens on click. They are
+   native <details> elements, so they work from the keyboard and with screen readers. */
+.fid-app .fid-item {
+  margin: 0 0 1.2em;
+  padding: 1.2em 1.4em;
+}
+
+.fid-app .fid-item > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8em;
+  color: var(--fid-accent);
+  font-size: 1.05em;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.fid-app .fid-item > summary::marker {
+  content: "";
+}
+
+.fid-app .fid-item > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fid-app .fid-item > summary::after {
+  content: "+";
+  margin-left: auto;
+  font-size: 1.2em;
+  line-height: 1;
+}
+
+.fid-app .fid-item[open] > summary::after {
+  content: "\2212";
+}
+
+.fid-app .fid-item[open] > summary {
+  margin-bottom: 0.8em;
+}
+
+.fid-app .fid-item:not([open]) .fid-when-open,
+.fid-app .fid-item[open] .fid-when-closed {
+  display: none;
+}
+
+.fid-app .fid-item-body p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 1.05em;
+  line-height: 1.6;
+}
+
+/* Pills, like the site's badges and language switch */
+.fid-app .fid-btn {
+  min-height: 44px;
+  padding: 0.5em 1.3em;
+  border: 0;
+  border-radius: 22px;
+  background: var(--fid-accent-soft);
+  color: var(--fid-accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fid-app .fid-btn:hover {
+  background: var(--fid-accent);
+  color: #fff;
+}
+
+.fid-app .fid-btn-primary {
+  background: var(--fid-accent);
+  color: #fff;
+}
+
+.fid-app .fid-btn-primary:hover {
+  background: var(--fid-accent-bright);
+}
+
+.fid-app .fid-meta {
+  margin-top: 1.5rem;
+  color: var(--fid-muted);
+  font-size: 0.85em;
+}
+
+.fid-app .fid-meta code {
+  display: inline-block;
+  padding: 0.1em 0.6em;
+  border-radius: 20px;
+  background: var(--fid-accent-soft);
+  color: var(--fid-accent);
+  font: 0.95em ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace;
+  user-select: all;
+}
+
+.fid-app .fid-open {
+  margin-top: 2rem;
+}
+
+.fid-app .fid-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.fid-app .fid-input {
+  min-height: 44px;
+  padding: 0.4em 0.8em;
+  border: 1px solid var(--fid-line);
+  border-radius: var(--fid-radius);
+  background: #fff;
+  color: var(--fid-ink);
+  font: inherit;
+  font-family: ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace;
+}
+
+.fid-app .fid-error {
+  padding: 0.9em 1.1em;
+  border-left: 4px solid var(--fid-warn);
+  border-radius: 0 var(--fid-radius) var(--fid-radius) 0;
+  background: var(--fid-warn-soft);
+}
+
+/* Drawings of the workings (see app/graphics/) ----------------------------------------- */
+
+/* They keep their natural size: on a narrow screen they scroll inside their box. */
+.fid-app .fid-drawing {
+  max-width: 100%;
+  overflow-x: auto;
+}
 
 .fid-app .fid-svg {
   display: block;
@@ -53,8 +320,12 @@
   height: auto;
 }
 
+.fid-app .fid-drawing .fid-svg {
+  max-width: none;
+}
+
 .fid-app .fid-text {
-  fill: var(--fid-fg);
+  fill: var(--fid-ink);
   font: 22px ui-monospace, "DejaVu Sans Mono", "Liberation Mono", Menlo, Consolas, monospace;
 }
 
@@ -67,8 +338,8 @@
 }
 
 .fid-app .fid-label {
-  fill: var(--fid-fg);
-  font: 15px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  fill: var(--fid-ink);
+  font: 15px "Source Sans Pro", sans-serif;
 }
 
 .fid-app .fid-rem {
