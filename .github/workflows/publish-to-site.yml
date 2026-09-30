@@ -1,0 +1,109 @@
+# Publishes the page to the lab site when a release is published: it copies the
+# files of the page into teaching/courses/fondamenti-di-informatica/esercizi/ of
+# Stratus-Lab-Unime/stratus-lab-unime.github.io, commits and pushes. It runs on
+# releases only, never on a push, so the site follows stable versions and a change
+# in progress is never seen by students.
+#
+# Setup, once
+# -----------
+# The workflow needs a secret named SITE_REPO_TOKEN with permission to write to the
+# contents of the site repository:
+#
+#   1. Create a fine-grained personal access token (GitHub > Settings > Developer
+#      settings > Personal access tokens > Fine-grained tokens) owned by the
+#      organisation Stratus-Lab-Unime, with
+#        - Repository access: only Stratus-Lab-Unime/stratus-lab-unime.github.io
+#        - Repository permissions: Contents: Read and write (nothing else)
+#      and, if the organisation asks for it, have an owner approve the token.
+#   2. In this repository: Settings > Secrets and variables > Actions > New
+#      repository secret, name SITE_REPO_TOKEN, value the token.
+#
+# If the default branch of the site repository is protected and requires a pull
+# request, the push is refused: allow this token to bypass the protection, or
+# change the last step to open a pull request.
+#
+# Publishing a release: Releases > Draft a new release, choose or create a tag,
+# Publish release. A pre-release is not published to the site; it is when it
+# becomes a full release. A failed run can be repeated from the Actions tab.
+
+name: Publish to the lab site
+
+on:
+  release:
+    types: [released]
+
+permissions:
+  contents: read
+
+# Two releases in a row must not push at the same time.
+concurrency:
+  group: publish-to-site
+  cancel-in-progress: false
+
+env:
+  SITE_REPOSITORY: Stratus-Lab-Unime/stratus-lab-unime.github.io
+  SITE_DIRECTORY: teaching/courses/fondamenti-di-informatica/esercizi
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the release
+        uses: actions/checkout@v4 # for a release, the commit of its tag
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Nothing is published unless the release passes its own checks.
+      - name: Run the tests
+        run: node --test "tests/*.test.mjs"
+
+      - name: Check that the page can be copied into another site
+        run: node tools/check-release.mjs
+
+      - name: Collect the files of the page
+        run: node tools/export-release.mjs "$RUNNER_TEMP/page"
+
+      - name: Check out the site
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SITE_REPOSITORY }}
+          token: ${{ secrets.SITE_REPO_TOKEN }}
+          path: site
+          fetch-depth: 1
+
+      # --delete makes the folder of the site identical to the page: files that
+      # no longer exist in the page do not stay behind. It only touches that folder.
+      - name: Copy the page into the site
+        run: |
+          set -euo pipefail
+          mkdir -p "site/${SITE_DIRECTORY}"
+          rsync -a --delete "${RUNNER_TEMP}/page/" "site/${SITE_DIRECTORY}/"
+
+      - name: Commit and push
+        working-directory: site
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          SOURCE: ${{ github.repository }}@${{ github.sha }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- "${SITE_DIRECTORY}"
+          if git diff --cached --quiet; then
+            echo "The site already has this version: nothing to publish."
+            exit 0
+          fi
+          git commit -m "Update the exercises to ${TAG}" -m "Source: ${SOURCE}"
+          # The site changes often: if someone pushed in the meantime, rebase and retry.
+          for attempt in 1 2 3; do
+            if git push; then
+              exit 0
+            fi
+            git pull --rebase
+          done
+          echo "Could not push after three attempts." >&2
+          exit 1
