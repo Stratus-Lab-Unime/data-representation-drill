@@ -8,7 +8,9 @@ export const count = (markup, pattern) => (markup.match(pattern) ?? []).length;
 export const texts = (markup) => [...markup.matchAll(/<text\b[^>]*>(.*?)<\/text>/g)].map((m) => m[1]);
 
 /** The same, with the tspans removed: what a reader sees on each line. */
-export const plainTexts = (markup) => texts(markup).map((t) => t.replace(/<[^>]+>/g, ''));
+const ENTITIES = { '&lt;': '<', '&gt;': '>', '&quot;': '"', '&amp;': '&' };
+export const plainTexts = (markup) =>
+  texts(markup).map((t) => t.replace(/<[^>]+>/g, '').replace(/&(lt|gt|quot|amp);/g, (e) => ENTITIES[e]));
 
 /** x attributes of the <text> elements whose content, without tags, equals `content`. */
 export const xOf = (markup, content) =>

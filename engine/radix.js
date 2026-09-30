@@ -58,3 +58,25 @@ export function bitLength(value) {
   const n = toNonNegative(value);
   return n === 0n ? 0 : n.toString(2).length;
 }
+
+/**
+ * The explicit form of a binary number, as the slides write it: each digit times
+ * its power of 2, and the sum of the terms that are not zero. `columns` goes from
+ * the most to the least significant digit. Meant for short numbers (up to 52 bits,
+ * so that every weight is exact).
+ */
+export function binaryValueWorking(bits) {
+  const text = String(bits);
+  if (!/^[01]+$/.test(text) || text.length > 52) throw new SyntaxError(`not a binary number of up to 52 bits: "${text}"`);
+  const columns = [...text].map((digit, i) => {
+    const exponent = text.length - 1 - i;
+    const weight = 2 ** exponent;
+    return { exponent, digit, weight, product: Number(digit) * weight };
+  });
+  return {
+    bits: text,
+    columns,
+    addends: columns.filter((c) => c.product > 0).map((c) => c.product),
+    value: columns.reduce((sum, c) => sum + c.product, 0),
+  };
+}

@@ -5,6 +5,7 @@
 // questions have an exact answer and no rounding is ever needed.
 
 import { drawUntil } from '../../../engine/index.js';
+import { imageWorking } from '../workings.js';
 
 const RESOLUTIONS = [
   [640, 480], [800, 600], [1024, 600], [1024, 768], [1280, 720], [1280, 960], [1366, 768],
@@ -21,41 +22,53 @@ function pickImage(rng, depths) {
   return { width, height, bits, colors: 2 ** bits, kb: (width * height * bits) / BITS_PER_KB };
 }
 
+// The working that goes with a question: the numbers that lead to its answer.
+const working = (variant, image) => [{ kind: 'image-steps', ...imageWorking(variant, image) }];
+
 const VARIANTS = {
   kb(rng) {
-    const { width, height, colors, kb } = pickImage(rng, [2, 4, 8, 16, 24]);
+    const image = pickImage(rng, [2, 4, 8, 16, 24]);
+    const { width, height, colors, kb } = image;
     return {
       prompt: { id: 'image-size.kb.prompt', values: { width, height, colors } },
       answer: { id: 'image-size.kb.answer', values: { kb } },
+      steps: working('kb', image),
     };
   },
 
   side(rng) {
-    const { width, height, colors, kb } = pickImage(rng, [4, 8, 16, 24]);
+    const image = pickImage(rng, [4, 8, 16, 24]);
+    const { width, height, colors, kb } = image;
     return rng.chance()
       ? {
           prompt: { id: 'image-size.side.baseFromHeight', values: { colors, kb, height } },
           answer: { id: 'image-size.side.answer', values: { pixels: width } },
+          steps: working('base', image),
         }
       : {
           prompt: { id: 'image-size.side.heightFromBase', values: { colors, kb, width } },
           answer: { id: 'image-size.side.answer', values: { pixels: height } },
+          steps: working('height', image),
         };
   },
 
   bits(rng) {
-    const { width, height, bits, kb } = pickImage(rng, [1, 2, 4, 8, 12, 16, 24]);
+    const image = pickImage(rng, [1, 2, 4, 8, 12, 16, 24]);
+    const { width, height, bits, kb } = image;
     return {
       prompt: { id: 'image-size.bits.prompt', values: { width, height, kb } },
       answer: { id: 'image-size.bits.answer', values: { bits } },
+      steps: working('bits', image),
     };
   },
 
   colors(rng) {
-    const { width, height, bits, colors, kb } = pickImage(rng, [1, 2, 4, 8, 12, 16, 24]);
+    const image = pickImage(rng, [1, 2, 4, 8, 12, 16, 24]);
+    const { width, height, bits, colors, kb } = image;
     return {
       prompt: { id: 'image-size.colors.prompt', values: { width, height, kb } },
       answer: { id: 'image-size.colors.answer', values: { colors, bits } },
+      steps: working('colors', image),
     };
   },
 };

@@ -55,3 +55,49 @@ export function decodeSigned(bits, scheme) {
   if (scheme === 'c2') return negative ? raw - (1n << w) : raw;
   throw new RangeError(`unknown scheme: ${scheme}`);
 }
+
+const invert = (bits) => [...bits].map((bit) => (bit === '1' ? '0' : '1')).join('');
+
+/**
+ * The working of the conversion of a negative number, as the slides teach it:
+ * write the magnitude in binary, fill it with zeros on the left, and then
+ *   sign and magnitude   put the sign bit 1 in front of the magnitude (width - 1 bits);
+ *   one's complement     invert all the bits;
+ *   two's complement     invert all the bits and add 1.
+ * `carries` has, for each column of that addition, the carry coming in from the
+ * column on its right. Everything is text; the fields are the intermediate
+ * results, and `result` is what the schemes above return.
+ */
+export function complementWorking(value, width, scheme) {
+  const n = toBig(value);
+  if (n >= 0n) throw new RangeError('the working is shown for negative numbers');
+  const encode = { ms: signMagnitude, c1: onesComplement, c2: twosComplement }[scheme];
+  if (!encode) throw new RangeError(`unknown scheme: ${scheme}`);
+  const result = encode(n, width); // also checks that the number fits
+  const magnitude = -n;
+  const working = {
+    scheme,
+    width,
+    value: String(n),
+    magnitude: String(magnitude),
+    magnitudeBits: toBinary(magnitude),
+    result,
+  };
+  if (scheme === 'ms') return { ...working, filled: toBinary(magnitude, width - 1) };
+
+  const filled = toBinary(magnitude, width);
+  const inverted = invert(filled);
+  if (scheme === 'c1') return { ...working, filled, inverted };
+
+  const addend = `${'0'.repeat(width - 1)}1`;
+  const carries = Array(width).fill('0');
+  const sum = Array(width).fill('0');
+  let carry = 0;
+  for (let column = width - 1; column >= 0; column--) {
+    carries[column] = String(carry);
+    const total = Number(inverted[column]) + Number(addend[column]) + carry;
+    sum[column] = String(total % 2);
+    carry = total >> 1;
+  }
+  return { ...working, filled, inverted, addend, carries: carries.join(''), sum: sum.join('') };
+}

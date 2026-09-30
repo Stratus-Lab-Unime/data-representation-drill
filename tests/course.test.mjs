@@ -1,9 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { GENERATORS, createCourse, messages } from '../course/fondamenti-di-informatica/index.js';
+import { drawComplementSteps } from '../app/graphics/complement-steps.js';
 import { drawDivisionTable } from '../app/graphics/division-table.js';
 import { drawFractionTable } from '../app/graphics/fraction-table.js';
 import { drawIeeeSteps } from '../app/graphics/ieee-steps.js';
+import { drawPositionalTable } from '../app/graphics/positional-table.js';
+import { drawImageSteps, drawTextSizeSteps } from '../app/graphics/size-steps.js';
 import { drawLongDivision } from '../app/graphics/long-division.js';
 import { assertWellFormed } from './svg-helpers.mjs';
 
@@ -76,8 +79,8 @@ function slowDivisionCount(dividend, divisor) {
 
 test('the course offers the nine categories in order, each with a label', () => {
   assert.deepEqual(GENERATORS.map((g) => g.id), [
-    'dec-to-bin', 'bin-to-dec', 'dec-to-hex', 'fixed-point', 'floating-point',
-    'complements', 'binary-division', 'ascii-size', 'image-size',
+    'dec-to-bin', 'bin-to-dec', 'dec-to-hex', 'complements', 'fixed-point',
+    'floating-point', 'binary-division', 'ascii-size', 'image-size',
   ]);
   assert.deepEqual(registry.list(), GENERATORS.map((g) => g.id));
   assert.equal(new Set(categories.map((c) => c.label)).size, 9);
@@ -348,31 +351,52 @@ const DRAWERS = {
   'long-division': drawLongDivision,
   'fraction-table': drawFractionTable,
   'ieee-steps': drawIeeeSteps,
+  'complement-steps': drawComplementSteps,
+  'positional-table': drawPositionalTable,
+  'text-size-steps': drawTextSizeSteps,
+  'image-steps': drawImageSteps,
 };
 
-// The categories that show a working, and the kind of it. Signed numbers have none, on purpose.
+// The steps of the working of every category, in order.
 const WORKINGS = {
-  'dec-to-bin': 'division-table',
-  'dec-to-hex': 'division-table',
-  'fixed-point': 'fraction-table',
-  'floating-point': 'ieee-steps',
-  'binary-division': 'long-division',
+  'dec-to-bin': ['division-table'],
+  'bin-to-dec': ['positional-table'],
+  'dec-to-hex': ['division-table'],
+  'complements': ['division-table', 'complement-steps'],
+  'fixed-point': ['fraction-table'],
+  'floating-point': ['ieee-steps'],
+  'binary-division': ['long-division'],
+  'ascii-size': ['text-size-steps'],
+  'image-size': ['image-steps'],
 };
 
-test('the categories with a working are exactly the agreed ones', () => {
+test('every category has a working, with its steps in order', () => {
   for (const { id } of categories) {
-    const kinds = questionsOf(id).flatMap((q) => (q.steps ?? []).map((step) => step.kind));
-    if (WORKINGS[id]) assert.deepEqual([...new Set(kinds)], [WORKINGS[id]], id);
-    else assert.deepEqual(kinds, [], id);
+    for (const q of questionsOf(id)) {
+      assert.deepEqual((q.steps ?? []).map((step) => step.kind), WORKINGS[id] ?? [], id);
+    }
   }
 });
 
 test('every working can be drawn', () => {
   for (const id of Object.keys(WORKINGS)) {
     for (const q of questionsOf(id).slice(0, 150)) {
-      const [{ kind, ...model }] = q.steps;
-      assertWellFormed(DRAWERS[kind](model));
+      for (const { kind, ...model } of q.steps) assertWellFormed(DRAWERS[kind](model));
     }
+  }
+});
+
+test('the working of signed numbers agrees with the question and the answer', () => {
+  for (const q of questionsOf('complements')) {
+    const [table, steps] = q.steps;
+    const { n, width } = q.prompt.values;
+    assert.equal(table.value, String(-n)); // the magnitude is found by successive divisions
+    assert.equal(table.result, (-n).toString(2));
+    assert.equal(steps.scheme, q.prompt.id.split('.').at(-1));
+    assert.equal(steps.width, width);
+    assert.equal(steps.value, String(n));
+    assert.equal(steps.result, q.answer.values.bits);
+    assert.equal(steps.magnitudeBits, table.result);
   }
 });
 
@@ -399,4 +423,49 @@ test('the working of floating point agrees with the question and the answer', ()
     assert.equal(model.carry, false);
     assert.equal(model.kept.length + model.padding, 23);
   }
+});
+
+test('the working of binary to decimal agrees with the question and the answer', () => {
+  for (const q of questionsOf('bin-to-dec')) {
+    const [{ kind, ...model }] = q.steps;
+    assert.equal(kind, 'positional-table');
+    assert.equal(model.bits, q.prompt.values.bits);
+    assert.equal(model.value, q.answer.values.value);
+    assert.equal(model.columns.length, model.bits.length);
+  }
+});
+
+test('the working of the text size agrees with the question and the answer', () => {
+  for (const q of questionsOf('ascii-size')) {
+    const [{ kind, ...model }] = q.steps;
+    const { pages, rows, chars } = q.prompt.values;
+    assert.equal(kind, 'text-size-steps');
+    assert.deepEqual([model.pages, model.rows, model.chars], [pages, rows, chars]);
+    assert.equal(model.bytes, q.answer.values.bytes);
+    assert.equal(model.perPage * model.pages, model.characters);
+  }
+});
+
+test('the working of an image agrees with the question, the answer and the variant asked', () => {
+  const asked = {
+    'image-size.kb.prompt': 'kb', 'image-size.side.baseFromHeight': 'base', 'image-size.side.heightFromBase': 'height',
+    'image-size.bits.prompt': 'bits', 'image-size.colors.prompt': 'colors',
+  };
+  const seen = new Set();
+  for (const q of questionsOf('image-size')) {
+    const [{ kind, ...model }] = q.steps;
+    assert.equal(kind, 'image-steps');
+    assert.equal(model.variant, asked[q.prompt.id]);
+    seen.add(model.variant);
+    const a = q.answer.values;
+    const v = q.prompt.values;
+    if (model.variant === 'kb') assert.equal(model.kb, a.kb);
+    if (model.variant === 'base') assert.equal(model.width, a.pixels);
+    if (model.variant === 'height') assert.equal(model.height, a.pixels);
+    if (model.variant === 'bits') assert.equal(model.bits, a.bits);
+    if (model.variant === 'colors') assert.equal(model.colors, a.colors);
+    if ('kb' in v) assert.equal(model.kb, v.kb); // the size given in the question
+    if ('colors' in v) assert.equal(model.colors, v.colors);
+  }
+  assert.deepEqual([...seen].sort(), ['base', 'bits', 'colors', 'height', 'kb']);
 });

@@ -13,15 +13,15 @@ export const formatters = {
 };
 
 export const messages = {
-  'category.dec-to-bin': 'Da decimale a binario',
-  'category.bin-to-dec': 'Da binario a decimale',
-  'category.dec-to-hex': 'Da decimale a esadecimale',
-  'category.fixed-point': 'Virgola fissa',
-  'category.floating-point': 'Virgola mobile',
-  'category.complements': 'Numeri con segno',
+  'category.dec-to-bin': 'Conversione da decimale a binario',
+  'category.bin-to-dec': 'Conversione da binario a decimale',
+  'category.dec-to-hex': 'Conversione da decimale a esadecimale',
+  'category.fixed-point': 'Codifica di numeri reali in virgola fissa',
+  'category.floating-point': 'Codifica di numeri reali in virgola mobile',
+  'category.complements': 'Codifiche di numeri interi',
   'category.binary-division': 'Divisioni binarie',
   'category.ascii-size': 'Codifica ASCII',
-  'category.image-size': 'Immagini',
+  'category.image-size': 'Codifica di immagini',
 
   'dec-to-bin.prompt':
     'Qual è la codifica binaria del numero decimale {n}? Indicare inoltre quante volte compare la cifra {digit} ' +

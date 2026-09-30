@@ -1,7 +1,14 @@
 // Negative integers in sign and magnitude, one's complement or two's complement,
 // on 8 or 16 bits. Only negative numbers: for the others the three schemes agree.
 
-import { drawUntil, onesComplement, signMagnitude, twosComplement } from '../../../engine/index.js';
+import {
+  complementWorking,
+  drawUntil,
+  onesComplement,
+  signMagnitude,
+  successiveDivisions,
+  twosComplement,
+} from '../../../engine/index.js';
 
 const SCHEMES = { ms: signMagnitude, c1: onesComplement, c2: twosComplement };
 const isPowerOfTwo = (n) => (n & (n - 1)) === 0;
@@ -19,6 +26,11 @@ export const complements = {
     return {
       prompt: { id: `complements.prompt.${scheme}`, values: { n, width } },
       answer: { id: 'complements.answer', values: { bits: SCHEMES[scheme](n, width) } },
+      // the magnitude by successive divisions, then the steps up to the result
+      steps: [
+        { kind: 'division-table', ...successiveDivisions(magnitude, 2) },
+        { kind: 'complement-steps', ...complementWorking(n, width, scheme) },
+      ],
     };
   },
 };

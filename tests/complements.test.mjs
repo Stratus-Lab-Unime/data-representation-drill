@@ -98,3 +98,85 @@ test('wide values work on 64 bits', () => {
   assert.equal(decodeSigned('1'.repeat(64), 'c2'), -1n);
   assert.equal(signMagnitude(2n ** 63n - 1n, 64), `0${'1'.repeat(63)}`);
 });
+
+// ---- the working of a conversion ----
+
+import { complementWorking } from '../engine/complements.js';
+
+test('the working of the slide for -27 in sign and magnitude', () => {
+  const w = complementWorking(-27, 8, 'ms');
+  assert.equal(w.value, '-27');
+  assert.equal(w.magnitude, '27');
+  assert.equal(w.magnitudeBits, '11011');
+  assert.equal(w.filled, '0011011'); // 7 bits: the sign has its own
+  assert.equal(w.result, '10011011');
+});
+
+test('the working of the slide for -43 in one\'s complement', () => {
+  const w = complementWorking(-43, 8, 'c1');
+  assert.equal(w.magnitudeBits, '101011');
+  assert.equal(w.filled, '00101011');
+  assert.equal(w.inverted, '11010100');
+  assert.equal(w.result, '11010100');
+});
+
+test('the working of the slide for -42 in two\'s complement: invert and add 1', () => {
+  const w = complementWorking(-42, 8, 'c2');
+  assert.equal(w.filled, '00101010');
+  assert.equal(w.inverted, '11010101');
+  assert.equal(w.addend, '00000001');
+  assert.equal(w.carries, '00000010'); // 1 + 1 = 10: one carry, into the second column from the right
+  assert.equal(w.sum, '11010110');
+  assert.equal(w.result, '11010110');
+});
+
+test('-1 needs no carry and -128 carries through the whole number', () => {
+  const one = complementWorking(-1, 8, 'c2');
+  assert.equal(one.inverted, '11111110');
+  assert.equal(one.carries, '00000000');
+  assert.equal(one.sum, '11111111');
+  const big = complementWorking(-128, 8, 'c2');
+  assert.equal(big.inverted, '01111111');
+  assert.equal(big.carries, '11111110');
+  assert.equal(big.sum, '10000000');
+});
+
+test('the working agrees with the conversion and every step is consistent', () => {
+  const rng = createRng(72);
+  for (let i = 0; i < 2000; i++) {
+    const width = rng.pick([8, 16]);
+    const n = -rng.int(1, 2 ** (width - 1) - 1);
+    for (const [scheme, encode] of [['ms', signMagnitude], ['c1', onesComplement], ['c2', twosComplement]]) {
+      const w = complementWorking(n, width, scheme);
+      assert.equal(w.result, encode(n, width), `${scheme} ${n}/${width}`);
+      assert.equal(w.magnitudeBits, (-n).toString(2));
+      if (scheme === 'ms') {
+        assert.equal(w.filled.length, width - 1);
+        assert.equal(`1${w.filled}`, w.result);
+        continue;
+      }
+      assert.equal(w.filled.length, width);
+      assert.equal(BigInt(`0b${w.filled}`), BigInt(-n));
+      assert.equal(BigInt(`0b${w.filled}`) + BigInt(`0b${w.inverted}`), 2n ** BigInt(width) - 1n); // inverted bits complement to all ones
+      if (scheme === 'c1') {
+        assert.equal(w.inverted, w.result);
+        continue;
+      }
+      // column by column: bit + bit + carry in = sum bit + 2 * carry out (the carry in of the next column)
+      for (let c = 0; c < width; c++) {
+        const carryOut = c === 0 ? 0 : Number(w.carries[c - 1]);
+        const total = Number(w.inverted[c]) + Number(w.addend[c]) + Number(w.carries[c]);
+        assert.equal(total, Number(w.sum[c]) + 2 * carryOut, `column ${c} of ${n}/${width}`);
+      }
+      assert.equal(w.sum, w.result);
+      assert.equal(w.carries[width - 1], '0'); // nothing comes into the rightmost column
+    }
+  }
+});
+
+test('the working refuses what cannot be shown', () => {
+  assert.throws(() => complementWorking(5, 8, 'c2'), RangeError);
+  assert.throws(() => complementWorking(0, 8, 'c2'), RangeError);
+  assert.throws(() => complementWorking(-128, 8, 'ms'), RangeError);
+  assert.throws(() => complementWorking(-5, 8, 'c3'), RangeError);
+});

@@ -1,6 +1,6 @@
 // Binary to decimal, on 7 or 8 bits (leading zeros allowed).
 
-import { drawUntil, fromBinary, popcount } from '../../../engine/index.js';
+import { binaryValueWorking, drawUntil, fromBinary, popcount } from '../../../engine/index.js';
 
 export const binToDec = {
   id: 'bin-to-dec',
@@ -18,6 +18,7 @@ export const binToDec = {
     return {
       prompt: { id: 'bin-to-dec.prompt', values: { bits } },
       answer: { id: 'bin-to-dec.answer', values: { value: Number(fromBinary(bits)) } },
+      steps: [{ kind: 'positional-table', ...binaryValueWorking(bits) }],
     };
   },
 };
